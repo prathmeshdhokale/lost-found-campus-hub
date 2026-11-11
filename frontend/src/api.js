@@ -1,0 +1,2 @@
+const API=import.meta.env.VITE_API_URL||'http://localhost:8080/api';
+export async function request(path,{method='GET',body,token,form=false}={}){const headers={};if(token)headers.Authorization=`Bearer ${token}`;if(body&&!form)headers['Content-Type']='application/json';const res=await fetch(`${API}${path}`,{method,headers,body:body?(form?body:JSON.stringify(body)):undefined});const data=res.status===204?null:await res.json().catch(()=>null);if(!res.ok)throw new Error(data?.error||data?.message||'Request failed');return data;}

@@ -1,0 +1,9 @@
+package com.campus.lostfound.web;
+import com.campus.lostfound.model.*;import com.campus.lostfound.repo.*;import jakarta.validation.constraints.*;import org.springframework.security.core.Authentication;import org.springframework.transaction.annotation.Transactional;import org.springframework.web.bind.annotation.*;import java.time.Instant;import java.util.List;
+@RestController @RequestMapping("/api/claims") public class ClaimController {
+ public record ClaimInput(@NotBlank @Size(max=1000) String message){} public record ClaimView(Long id,Long itemId,String itemTitle,String message,ClaimStatus status,Instant createdAt,String claimantName){}
+ static ClaimView convert(ClaimRequest c){return new ClaimView(c.getId(),c.getItemPost().getId(),c.getItemPost().getTitle(),c.getMessage(),c.getStatus(),c.getCreatedAt(),c.getClaimant().getName());}
+ static ClaimView createClaim(Long id,ClaimInput in,Authentication a,ItemRepository items,UserRepository users,ClaimRepository claims){ItemPost p=items.findById(id).orElseThrow();AppUser u=users.findByEmail(a.getName()).orElseThrow();if(p.getOwner().getId().equals(u.getId()))throw new IllegalArgumentException("You cannot claim your own post");if(claims.existsByItemPostIdAndClaimantId(id,u.getId()))throw new IllegalArgumentException("You have already submitted a claim");return convert(claims.save(new ClaimRequest(p,u,in.message())));}
+ private final ClaimRepository claims;private final UserRepository users;public ClaimController(ClaimRepository c,UserRepository u){claims=c;users=u;}
+ @GetMapping("/mine") @Transactional(readOnly=true) public List<ClaimView> mine(Authentication a){AppUser u=users.findByEmail(a.getName()).orElseThrow();return claims.findByClaimantIdOrderByCreatedAtDesc(u.getId()).stream().map(ClaimController::convert).toList();}
+}
